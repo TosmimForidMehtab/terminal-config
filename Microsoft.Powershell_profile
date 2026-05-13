@@ -1,0 +1,149 @@
+# Install powershell 7 and windows terminal from Microsoft Store first
+# Remove utilities like fzf, zoxide and AI banner if not needed
+
+$sw = [Diagnostics.Stopwatch]::StartNew()
+Invoke-Expression (&starship init powershell)
+
+# History prediction — INLINE (critical)
+Set-PSReadLineOption -PredictionSource History
+Set-PSReadLineOption -PredictionViewStyle InlineView
+Set-PSReadLineKeyHandler -Key Ctrl+Enter -Function AcceptSuggestion
+
+# Editing + navigation
+Set-PSReadLineOption -EditMode Windows
+Set-PSReadLineKeyHandler -Key Tab -Function Complete
+Set-PSReadLineKeyHandler -Key Ctrl+Spacebar -Function MenuComplete
+Set-PSReadLineOption -ShowToolTips
+# FZF bindings
+Set-PsFzfOption -PSReadlineChordProvider 'Ctrl+f'
+Set-PsFzfOption -PSReadlineChordReverseHistory 'Ctrl+r'
+
+# Directory teleport
+Invoke-Expression (& { (zoxide init powershell | Out-String) })
+
+# Quality-of-life
+Set-Alias grep findstr
+Set-Alias ~ $HOME
+function whereis($command) {
+	Get-Command -Name $command -ErrorAction SilentlyContinue |
+	Select-Object -ExpandProperty Path -ErrorAction SilentlyContinue
+}
+function gpp {
+    param(
+        [string]$filename,
+        [int]$version = 17,
+        [string[]]$options = @()
+    )
+
+    $outputFilename = $filename -replace '\.cpp$', ''
+    $gccCommand = "g++ -std=c++$version -s"
+    
+    foreach ($option in $options) {
+        $gccCommand += " $option"
+    }
+    
+    $gccCommand += " $filename -o $outputFilename"
+    Invoke-Expression $gccCommand
+}
+function ff {
+    fzf --preview 'bat --color=always {}'
+}
+
+function touch {
+    param(
+        [string[]]$Paths
+    )
+
+    foreach ($Path in $Paths) {
+        if (-not (Test-Path $Path)) {
+            New-Item -ItemType File -Path $Path | Out-Null
+        }
+        else {
+            (Get-Item $Path).LastWriteTime = Get-Date
+        }
+    }
+}
+
+function time {
+    param (
+        [Parameter(Mandatory = $true)]
+        [ScriptBlock]$Command
+    )
+
+    $stopwatch = [Diagnostics.Stopwatch]::StartNew()
+    try {
+        Invoke-Command -ScriptBlock $Command
+    }
+    catch{
+        Write-Error "Error occured: $_"
+    }
+    finally {
+        $stopwatch.Stop()
+        $executionTime = $stopwatch.Elapsed
+        Write-Host "Execution time: $executionTime"
+    }
+}
+function notepad++ {
+    param (
+        [String]$FilePath
+    )
+
+    if ($FilePath) {
+        Start-Process "C:\Program Files\Notepad++\notepad++.exe" -ArgumentList $FilePath
+    } else {
+        Start-Process "C:\Program Files\Notepad++\notepad++.exe"
+    }
+}
+function sudo {
+    param (
+        [String]$Command
+    )
+
+    if ($Command) {
+        Start-Process powershell -ArgumentList "Start-Process powershell -Verb RunAs -ArgumentList '$Command'"
+    } else {
+        Start-Process powershell -Verb RunAs
+    }
+}
+function cat {
+    param (
+        [Parameter(Mandatory=$true)]
+        [string]$Path
+    )
+    bat $Path
+}
+function proj {
+    zoxide query -l | fzf --preview 'cmd /c dir /a "{}"' | Set-Location
+}
+if ($env:TERM_PROGRAM -eq "kiro") { . "$(kiro --locate-shell-integration-path pwsh)" }
+
+Set-Alias oc opencode
+Set-Alias ci cline
+Set-Alias kl kilo
+Set-Alias ge gemini
+Set-Alias qw qwen
+Set-Alias qo qodercli
+Set-Alias cx codex
+Set-Alias kr kiro-cli
+function ai {
+    Write-Host "`n    █████╗ ██╗" -ForegroundColor Cyan
+    Write-Host "   ██╔══██╗██║" -ForegroundColor Cyan
+    Write-Host "   ███████║██║" -ForegroundColor Cyan
+    Write-Host "   ██╔══██║██║" -ForegroundColor Cyan
+    Write-Host "   ██║  ██║██║" -ForegroundColor Cyan
+    Write-Host "   ╚═╝  ╚═╝╚═╝" -ForegroundColor Cyan
+    Write-Host "   ──────────────────────────────────" -ForegroundColor DarkGray
+    Write-Host "   [oc] " -ForegroundColor Yellow -NoNewline; Write-Host "opencode  " -ForegroundColor White -NoNewline; Write-Host "AI Terminal Tool" -ForegroundColor DarkGray
+    Write-Host "   [ci] " -ForegroundColor Yellow -NoNewline; Write-Host "cline     " -ForegroundColor White -NoNewline; Write-Host "AI Terminal Tool" -ForegroundColor DarkGray
+    Write-Host "   [kl] " -ForegroundColor Yellow -NoNewline; Write-Host "kilo      " -ForegroundColor White -NoNewline; Write-Host "AI Terminal Tool" -ForegroundColor DarkGray
+Write-Host "   [ge] " -ForegroundColor Yellow -NoNewline; Write-Host "gemini    " -ForegroundColor White -NoNewline; Write-Host "AI Terminal Tool" -ForegroundColor DarkGray
+Write-Host "   [qw] " -ForegroundColor Yellow -NoNewline; Write-Host "qwen      " -ForegroundColor White -NoNewline; Write-Host "AI Terminal Tool" -ForegroundColor DarkGray
+Write-Host "   [qo] " -ForegroundColor Yellow -NoNewline; Write-Host "qoder     " -ForegroundColor White -NoNewline; Write-Host "AI Terminal Tool" -ForegroundColor DarkGray
+Write-Host "   [cx] " -ForegroundColor Yellow -NoNewline; Write-Host "codex     " -ForegroundColor White -NoNewline; Write-Host "AI Terminal Tool" -ForegroundColor DarkGray
+Write-Host "   [kr] " -ForegroundColor Yellow -NoNewline; Write-Host "kiro      " -ForegroundColor White -NoNewline; Write-Host "AI Terminal Tool" -ForegroundColor DarkGray
+    Write-Host "   ──────────────────────────────────`n" -ForegroundColor DarkGray
+}
+
+
+$sw.Stop()
+Write-Host "Shell startup: $($sw.ElapsedMilliseconds) ms"
