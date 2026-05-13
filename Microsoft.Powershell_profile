@@ -1,4 +1,5 @@
 # Install powershell 7 and windows terminal from Microsoft Store first
+# Located in Documents/PowerShell
 # Remove utilities like fzf, zoxide and AI banner if not needed
 
 $sw = [Diagnostics.Stopwatch]::StartNew()
